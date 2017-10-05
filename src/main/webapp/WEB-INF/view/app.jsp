@@ -34,7 +34,7 @@ table {
 }
 
 table th {
-	background-color: silver;
+	background-color: #217dbb;
 	text-align: center;
 	padding: 10px;
 }
@@ -44,10 +44,34 @@ table td {
 	border: 2px dotted silver;
 	word-break: break-all;
 }
-body { width: 100%; margin: 0; padding: 0; overflow: hidden; }
+
+body { width: 100%; margin: 0; padding: 0; overflow: scroll; }
 
 #container_1 { display: block; float: left; position: relative; right: -5%; }
 </style>
+
+<style type="text/css">
+	.TFtable{
+		width:100%; 
+		border-collapse:collapse; 
+	}
+	.TFtable td{ 
+		padding:7px; border:#4e95f4 1px solid;
+	}
+	/* provide some minimal visual accomodation for IE8 and below */
+	.TFtable tr{
+		background: #b8d1f3;
+	}
+	/*  Define the background color for all the ODD background rows  */
+	.TFtable tr:nth-child(odd){ 
+		background: #b8d1f3;
+	}
+	/*  Define the background color for all the EVEN background rows  */
+	.TFtable tr:nth-child(even){
+		background: #dae5f4;
+	}
+</style>
+
 </head>
 <body>
 <div id="container_1">
@@ -70,16 +94,17 @@ body { width: 100%; margin: 0; padding: 0; overflow: hidden; }
 		</div>
 		<div >
 
-			<table border="1">
+			<table border="1" class="TFtable">
 				
 				<c:if test="${ not empty application}">
 					
-					<table border="1">
+					<table border="1" class="TFtable">
 
 						<tr>
 							<th>Id</th>
+							<th>Application Name</th>
 							<th>Server Type</th>
-							<th>Availability</th>
+							<th>Application Url</th>
 							<th>Status Code</th>
 							<th>Description</th>
 						</tr>
@@ -88,8 +113,9 @@ body { width: 100%; margin: 0; padding: 0; overflow: hidden; }
 							var="applicationurl" varStatus="loop">
 							<tr>
 								<td>${loop.index+1}.</td>
+								<td>${fn:toUpperCase(applicationurl.appName)}</td>	
 								<td>${fn:toUpperCase(applicationurl.serverType.name)}</td>
-								<td><a href="${applicationurl.applicationUrl}" target="_ blank">${applicationurl.applicationUrl}</a></td>
+								<td><a href="${applicationurl.applicationUrl}" target="_blank">${applicationurl.applicationUrl}</a></td>
 								<td class="${applicationurl.status == true ? 'true-value valid':'false-value invalid'}">${applicationurl.statusCode}</td>
 								<td class="${applicationurl.status == true ? 'true-value valid':'false-value invalid'}">${applicationurl.description}</td>
 							</tr>

@@ -34,7 +34,7 @@ table {
 }
 
 table th {
-	background-color: silver;
+	background-color: #217dbb;
 	text-align: center;
 	padding: 10px;
 }
@@ -44,9 +44,31 @@ table td {
 	border: 2px dotted silver;
 	word-break: break-all;
 }
-body { width: 100%; margin: 0; padding: 0; overflow: hidden; }
+
+body { width: 100%; margin: 0; padding: 0; overflow: scroll; }
 
 #container_1 { display: block; float: left; position: relative; right: -5%; }
+</style>
+<style type="text/css">
+	.TFtable{
+		width:100%; 
+		border-collapse:collapse; 
+	}
+	.TFtable td{ 
+		padding:7px; border:#4e95f4 1px solid;
+	}
+	/* provide some minimal visual accomodation for IE8 and below */
+	.TFtable tr{
+		background: #b8d1f3;
+	}
+	/*  Define the background color for all the ODD background rows  */
+	.TFtable tr:nth-child(odd){ 
+		background: #b8d1f3;
+	}
+	/*  Define the background color for all the EVEN background rows  */
+	.TFtable tr:nth-child(even){
+		background: #dae5f4;
+	}
 </style>
 </head>
 <body>
@@ -69,23 +91,25 @@ body { width: 100%; margin: 0; padding: 0; overflow: hidden; }
 		<div>
 			<c:if test="${ not empty applications}">
 
-				<table border="1">
+				<table border="1" class="TFtable" >
 
 					<c:forEach items="${applications}" var="app" varStatus="loop">
 						<h3>${loop.index+1}.<a href="/pingservice/getUrlStatus/${app.id}">${fn:toUpperCase(app.applicationName)}</a>
 						</h3>
-						<table border="1">
+						<table border="1" class="TFtable">
 							<tr>
+							    <th>Application Name</th>
 								<th>Server Type</th>
 								<th>Availability</th>
 								<th>Status Code</th>
 							</tr>
 							<c:forEach items="${app.applicationUrl}" var="appurl">
 								<tr>
+								<td>${fn:toUpperCase(appurl.appName)}</td>						   
 									<td>${fn:toUpperCase(appurl.serverType.name)}</td>
 									<td
-										class="${appurl.status == true ? 'true-value valid':'false-value invalid'}">${appurl.status==true?'AVAILABLE':'NOT AVAILABLE'}</td>
-									<td class="${appurl.status == true ? 'true-value valid':'false-value invalid'}">${appurl.statusCode}</td>
+										class="${ (appurl.statusCode=='400' || appurl.statusCode=='200') ? 'true-value valid':'false-value invalid'}">${(appurl.statusCode=='400' || appurl.statusCode == '200')?'AVAILABLE':'NOT AVAILABLE'}</td>
+									<td class="${(appurl.statusCode=='400' || appurl.statusCode=='200')? 'true-value valid':'false-value invalid'}">${appurl.statusCode}</td>
 								</tr>
 							</c:forEach>
 						</table>

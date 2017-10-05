@@ -26,6 +26,8 @@ public class ApplicationUrl {
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	@Column(name = "ID")
 	private long id;
+	@Column(name = "APP_NAME")
+	private String appName;
 	@OneToOne(fetch = FetchType.EAGER)
 	@JsonIgnore
 	@OrderBy("name ASC")
@@ -57,6 +59,12 @@ public class ApplicationUrl {
 	}
 	public void setId(long id) {
 		this.id = id;
+	}	
+	public String getAppName() {
+		return appName;
+	}
+	public void setAppName(String appName) {
+		this.appName = appName;
 	}
 	public ServerType getServerType() {
 		return serverType;
