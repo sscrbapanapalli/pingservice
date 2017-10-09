@@ -9,11 +9,19 @@ import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,23 +46,26 @@ public class PingServiceJob implements SchedulingConfigurer {
 
 	@Autowired
 	ApplicationUrlRepository applicationUrlRepository;
+	
+	static {
+        disableSSLVerification();
+    }
 
 	@Override
 	public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
 		LOGGER.debug("adding applicationRepository job");
 		List<com.cmacgm.model.Application> application = applicationRepository.findAll();
-               System.out.println("application count: "+application.size());
+
 		if (application != null) {
 			for (com.cmacgm.model.Application configApplication : application) {
 				long delay = configApplication.getSyncJobInitialDelay();
 				long rate = configApplication.getSyncJobRate();
-				  System.out.println("application delay: "+delay);
-				  System.out.println("application rate: "+rate);
+				
 				taskRegistrar.addFixedRateTask(new IntervalTask(new Runnable() {
 
 					public void run() {
 						LOGGER.debug("running applicationRepository job");
-						  System.out.println("application name:"+configApplication.getApplicationName());						 
+										 
 						try {
 							StringBuilder buf = new StringBuilder();
 							boolean trigger = false;
@@ -194,6 +205,7 @@ public class PingServiceJob implements SchedulingConfigurer {
 		}
 	}
 
+	
 	private static HashMap<String, String> pingUrl(String address) {
 		HashMap<String, String> map = new HashMap<>();
 		int responseCode = 404;
@@ -208,7 +220,7 @@ public class PingServiceJob implements SchedulingConfigurer {
 			if (address.startsWith("http")) {
 				responseCode = ((HttpURLConnection) urlConnection).getResponseCode();
 				map.put("responseCode", String.valueOf(responseCode));
-			} else {
+			} else {				
 				responseCode = ((HttpsURLConnection) urlConnection).getResponseCode();
 				map.put("responseCode", String.valueOf(responseCode));
 			}
@@ -277,6 +289,51 @@ public class PingServiceJob implements SchedulingConfigurer {
 	    }
 
 	}
+	
+	 //Method used for bypassing SSL verification
+    public static void disableSSLVerification() {
+
+        TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
+            public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                return null;
+            }
+
+           
+
+			@Override
+			public void checkClientTrusted(java.security.cert.X509Certificate[] arg0, String arg1)
+					throws CertificateException {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void checkServerTrusted(java.security.cert.X509Certificate[] arg0, String arg1)
+					throws CertificateException {
+				// TODO Auto-generated method stub
+				
+			}
+
+        } };
+
+        SSLContext sc = null;
+        try {
+            sc = SSLContext.getInstance("SSL");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+        } catch (KeyManagementException e) {
+            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+
+        HostnameVerifier allHostsValid = new HostnameVerifier() {
+            public boolean verify(String hostname, SSLSession session) {
+                return true;
+            }
+        };      
+        HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);           
+    }
 
 	public void sendEmail(com.cmacgm.model.Application application, String htmlContent) {
 		SendMail sendMail = new SendMail();
@@ -293,10 +350,10 @@ public class PingServiceJob implements SchedulingConfigurer {
 
 /*	public static void main(String args[]) {
 		HashMap<String, String> map = new HashMap<>();
-		map = pingUrl("http://10.13.68.167/rm2016/report/INFINITY/Infinity%20Reports/Home?rs:embed=true");
+		map = pingUrl("http://10.13.68.167/success.html");
 		System.out.println(map.get("responseCode"));
 		System.out.println(map.get("description"));
 
-	}
-*/
+	}*/
+
 }
