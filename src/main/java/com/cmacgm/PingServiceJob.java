@@ -65,7 +65,8 @@ public class PingServiceJob implements SchedulingConfigurer {
 
 					public void run() {
 						LOGGER.debug("running applicationRepository job");
-										 
+						applicationRepository.updateLastSyncTime(new Date(), configApplication.getId());
+						
 						try {
 							StringBuilder buf = new StringBuilder();
 							boolean trigger = false;
@@ -101,7 +102,8 @@ public class PingServiceJob implements SchedulingConfigurer {
 													.append("</td></tr>");
 
 										} else {
-											   if(hMap.get("description").equalsIgnoreCase("connect timed out"))
+											   if(hMap.get("description").equalsIgnoreCase("connect timed out")  ||
+													   hMap.get("description").equalsIgnoreCase("Read timed out"))
 												applicationUrl.setStatus(true);
 												else
 												applicationUrl.setStatus(false);
@@ -121,7 +123,8 @@ public class PingServiceJob implements SchedulingConfigurer {
 										applicationUrlRepository.update(applicationUrl.isStatus(),
 												applicationUrl.getStatusCode(), applicationUrl.getDescription(),
 												new Date(), applicationUrl.getId());
-										if(!hMap.get("description").equalsIgnoreCase("connect timed out")){
+										if(!hMap.get("description").equalsIgnoreCase("connect timed out") ||
+												   !hMap.get("description").equalsIgnoreCase("Read timed out")){
 										trigger = true;
 										}
 									}
@@ -160,7 +163,8 @@ public class PingServiceJob implements SchedulingConfigurer {
 													.append("</td></tr>");
 
 										} else {
-											if(hMapSocket.get("description").equalsIgnoreCase("connect timed out"))
+											 if(hMapSocket.get("description").equalsIgnoreCase("connect timed out") ||
+													 hMapSocket.get("description").equalsIgnoreCase("Read timed out"))
 											applicationUrl.setStatus(true);
 											else
 											applicationUrl.setStatus(false);
@@ -179,7 +183,8 @@ public class PingServiceJob implements SchedulingConfigurer {
 										applicationUrlRepository.update(applicationUrl.isStatus(),
 												applicationUrl.getStatusCode(), applicationUrl.getDescription(),
 												new Date(), applicationUrl.getId());	
-										if(!hMapSocket.get("description").equalsIgnoreCase("connect timed out")){
+										if(!hMapSocket.get("description").equalsIgnoreCase("connect timed out") ||
+												   !hMapSocket.get("description").equalsIgnoreCase("Read timed out")){
 										trigger = true;
 										}
 									}
@@ -192,7 +197,7 @@ public class PingServiceJob implements SchedulingConfigurer {
 								buf.append("<tr><td>").append("No Url Configured").append("</td></tr>");
 							}								
 							buf.append("</table>" + "</body>" + "</html>");
-							applicationRepository.updateLastSyncTime(new Date(), configApplication.getId());
+							
 							if (trigger)
 								sendEmail(configApplication, buf.toString());
 						} catch (Exception e) {
