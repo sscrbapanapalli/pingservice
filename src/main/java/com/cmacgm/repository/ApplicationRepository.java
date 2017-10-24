@@ -19,7 +19,7 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
 	public Application findByIdApplication(@Param("id") Long id);
 
 	@Transactional
-	@Modifying(clearAutomatically = true)
+	@Modifying
 	@Query("update Application app set app.lastSyncTime =:lastSyncTime where app.id =:id")
 	void updateLastSyncTime(@Param("lastSyncTime") Date lastSyncTime, @Param("id") Long id);
 }

@@ -3,7 +3,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-<meta http-equiv="refresh" content="15">
+<meta http-equiv="refresh" content="30">
 <title>Ping Service</title>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
@@ -89,6 +89,10 @@ body { width: 100%; margin: 0; padding: 0; overflow: scroll; }
 					<h3>
 						<a href="/pingservice/home">${fn:toUpperCase(application.applicationName)}</a>
 					</h3>
+					<h3>Last Sync Time:
+						<fmt:parseDate value="${fn:toUpperCase(application.lastSyncTime)}" pattern="yyyy-MM-dd HH:mm:ss" var="date"/>
+                        <fmt:formatDate value="${date}" pattern="dd-MM-yyyy hh:mm:ss aa" />
+						</h3>
 				</div>
 			</div>
 		</div>

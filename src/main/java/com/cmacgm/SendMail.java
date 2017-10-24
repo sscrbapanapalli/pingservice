@@ -4,11 +4,14 @@ import java.security.GeneralSecurityException;
 import java.util.Properties;
 
 import javax.mail.Message;
+import javax.mail.Multipart;
 import javax.mail.Session;
 import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMessage.RecipientType;
+import javax.mail.internet.MimeMultipart;
 import javax.servlet.http.HttpServlet;
 
 import com.sun.mail.util.MailSSLSocketFactory;
@@ -47,13 +50,14 @@ public class SendMail extends HttpServlet {
 			sf.setTrustAllHosts(true);
 			props.put("mail.smtp.ssl.socketFactory", props.get("mail.smtp.ssl.socketFactory"));
 			session = Session.getInstance(props, null);
-			Message message = new MimeMessage(session);
+			
+			MimeMessage message = new MimeMessage(session);
 			message.setFrom(new InternetAddress(fromAdd));
 			message.addRecipient(RecipientType.TO, new InternetAddress(toAdd));
 			message.setSubject(subject);
-			message.setContent(text, "text/html; charset=utf-8");
-
+			message.setContent(text, "text/html");			
 			Transport.send(message);
+			
 			mailsuccess = true;
 			flag = true;
 			if (flag == false) {

@@ -12,6 +12,8 @@ import java.net.URLConnection;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +33,7 @@ import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.config.IntervalTask;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 
+import com.cmacgm.model.Application;
 import com.cmacgm.model.Users;
 import com.cmacgm.repository.ApplicationRepository;
 import com.cmacgm.repository.ApplicationUrlRepository;
@@ -55,31 +58,34 @@ public class PingServiceJob implements SchedulingConfigurer {
 	public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
 		LOGGER.debug("adding applicationRepository job");
 		List<com.cmacgm.model.Application> application = applicationRepository.findAll();
-
+	
 		if (application != null) {
+			
 			for (com.cmacgm.model.Application configApplication : application) {
 				long delay = configApplication.getSyncJobInitialDelay();
 				long rate = configApplication.getSyncJobRate();
 				
 				taskRegistrar.addFixedRateTask(new IntervalTask(new Runnable() {
-
+					Application configAppl=new Application();
 					public void run() {
 						LOGGER.debug("running applicationRepository job");
 						applicationRepository.updateLastSyncTime(new Date(), configApplication.getId());
-						
+						configAppl = applicationRepository.findByIdApplication(configApplication.getId());
+
 						try {
 							StringBuilder buf = new StringBuilder();
 							boolean trigger = false;
-							buf.append("<html>" + "<body>" + "<table>" + "<tr>"
+							buf.append("<html>" + "<body>" + "<table border='1'>" + "<tr>"                                     
 									+ "<th>Application Name</th>" + "<th>Server Type</th>"
 									+ "<th>Status Code</th>" + "<th>Description :</th>"
-									+ "<th>Application Url</th>" + "<th>Last Sync Time Url</th>" + "</tr>");
-							for (com.cmacgm.model.ApplicationUrl applicationUrl : configApplication
+									+ "<th>Application Url</th>" + "<th>Last Sync Time </th>" + "</tr>");
+							String statusCode = "";                                  
+							for (com.cmacgm.model.ApplicationUrl applicationUrl : configAppl
 									.getApplicationUrl()) {
 								if (applicationUrl != null
 										&& applicationUrl.getServerType().getName().equalsIgnoreCase("web")
 										|| applicationUrl.getServerType().getName().equalsIgnoreCase("webservices")) {
-									String statusCode = "404";
+								
 									HashMap<String, String> hMap = new HashMap<>();
 									hMap = pingUrl(applicationUrl.getApplicationUrl());
 									if (hMap != null && !hMap.isEmpty()) {
@@ -92,33 +98,32 @@ public class PingServiceJob implements SchedulingConfigurer {
 									
 										if (statusCode.equalsIgnoreCase("200")) {
 											applicationUrl.setStatus(true);
-											buf.append("<tr><td>").append(configApplication.getApplicationName())
+											buf.append("<tr><td>").append(applicationUrl.getAppName())
 													.append("</td><td>")
 													.append(applicationUrl.getServerType().getName())
 													.append("</td><td>").append(applicationUrl.getStatusCode())
 													.append("</td><td>").append(applicationUrl.getDescription())
 													.append("</td><td>").append(applicationUrl.getApplicationUrl())
-													.append("</td><td>").append(configApplication.getLastSyncTime())
+													.append("</td><td>").append(getFormatDate(configAppl.getLastSyncTime()))
 													.append("</td></tr>");
-
+									
 										} else {
 											   if(hMap.get("description").equalsIgnoreCase("connect timed out")  ||
 													   hMap.get("description").equalsIgnoreCase("Read timed out"))
 												applicationUrl.setStatus(true);
 												else
 												applicationUrl.setStatus(false);
-											buf.append("<tr><td>").append(configApplication.getApplicationName())
+											buf.append("<tr><td>").append(applicationUrl.getAppName())
 													.append("</td><td>")
 													.append(applicationUrl.getServerType().getName())
 													.append("</td><td>").append(applicationUrl.getStatusCode())
 													.append("</td><td>").append(applicationUrl.getDescription())
 													.append("</td><td>").append(applicationUrl.getApplicationUrl())
-													.append("</td><td>").append(configApplication.getLastSyncTime())
+													.append("</td><td>").append(getFormatDate(configAppl.getLastSyncTime()))
 													.append("</td></tr>");
-
+											
 											}
 										
-									//	buf.append("</table>" + "</body>" + "</html>");
 									
 										applicationUrlRepository.update(applicationUrl.isStatus(),
 												applicationUrl.getStatusCode(), applicationUrl.getDescription(),
@@ -135,7 +140,7 @@ public class PingServiceJob implements SchedulingConfigurer {
 														.equalsIgnoreCase("server"))
 										&& applicationUrl.getIpAddress() != null
 										&& applicationUrl.getHostPortNo() != null) {
-									String statusCode = "404";
+								
 									HashMap<String, String> hMapSocket = new HashMap<>();
 
 									hMapSocket = isSocketAliveUtility(applicationUrl.getIpAddress(),
@@ -153,31 +158,31 @@ public class PingServiceJob implements SchedulingConfigurer {
 
 										if (statusCode.equalsIgnoreCase("200")) {
 											applicationUrl.setStatus(true);
-											buf.append("<tr><td>").append(configApplication.getApplicationName())
+											buf.append("<tr><td>").append(applicationUrl.getAppName())
 													.append("</td><td>")
 													.append(applicationUrl.getServerType().getName())
 													.append("</td><td>").append(applicationUrl.getStatusCode())
 													.append("</td><td>").append(applicationUrl.getDescription())
 													.append("</td><td>").append(applicationUrl.getApplicationUrl())
-													.append("</td><td>").append(configApplication.getLastSyncTime())
+													.append("</td><td>").append(getFormatDate(configAppl.getLastSyncTime()))
 													.append("</td></tr>");
-
+											
 										} else {
 											 if(hMapSocket.get("description").equalsIgnoreCase("connect timed out") ||
 													 hMapSocket.get("description").equalsIgnoreCase("Read timed out"))
 											applicationUrl.setStatus(true);
 											else
 											applicationUrl.setStatus(false);
-											buf.append("<tr><td>").append(configApplication.getApplicationName())
+											buf.append("<tr><td>").append(applicationUrl.getAppName())
 													.append("</td><td>")
 													.append(applicationUrl.getServerType().getName())
 													.append("</td><td>").append(applicationUrl.getStatusCode())
 													.append("</td><td>").append(applicationUrl.getDescription())
 													.append("</td><td>").append(applicationUrl.getApplicationUrl())
-													.append("</td><td>").append(configApplication.getLastSyncTime())
+													.append("</td><td>").append(getFormatDate(configAppl.getLastSyncTime()))
 													.append("</td></tr>");
 											
-
+											
 										}
 										
 										applicationUrlRepository.update(applicationUrl.isStatus(),
@@ -191,15 +196,19 @@ public class PingServiceJob implements SchedulingConfigurer {
 								}
 
 							}
-							if(configApplication
-									.getApplicationUrl()==null || configApplication
+							if(configAppl
+									.getApplicationUrl()==null || configAppl
 									.getApplicationUrl().size()==0){
 								buf.append("<tr><td>").append("No Url Configured").append("</td></tr>");
 							}								
 							buf.append("</table>" + "</body>" + "</html>");
 							
 							if (trigger)
-								sendEmail(configApplication, buf.toString());
+							{							
+								sendEmail(configAppl, buf.toString());
+							    buf =null;
+							    trigger=false;
+							}
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -210,7 +219,12 @@ public class PingServiceJob implements SchedulingConfigurer {
 		}
 	}
 
-	
+	public String getFormatDate(Date lastSyncTime){	
+		 DateFormat outputformat = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss aa");
+	       String output = null;
+	       output = outputformat.format(lastSyncTime);
+		return output;
+	}
 	private static HashMap<String, String> pingUrl(String address) {
 		HashMap<String, String> map = new HashMap<>();
 		int responseCode = 404;
@@ -220,8 +234,9 @@ public class PingServiceJob implements SchedulingConfigurer {
 			URL url = new URL(address);
 
 			URLConnection urlConnection = url.openConnection();
-			urlConnection.setConnectTimeout(7000);
-			urlConnection.setReadTimeout(7000);
+			
+			urlConnection.setConnectTimeout(15000);
+			urlConnection.setReadTimeout(15000);
 			if (address.startsWith("http")) {
 				responseCode = ((HttpURLConnection) urlConnection).getResponseCode();
 				map.put("responseCode", String.valueOf(responseCode));
@@ -265,7 +280,7 @@ public class PingServiceJob implements SchedulingConfigurer {
 		map.put("responseCode", " ");
 		map.put("description", " ");
 		try {
-			socket.connect(socketAddress, 7000);
+			socket.connect(socketAddress, 15000);
 			
 			map.put("responseCode", "200");
 			map.put("description", "SUCCESS");
