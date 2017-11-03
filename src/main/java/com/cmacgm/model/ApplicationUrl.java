@@ -54,6 +54,10 @@ public class ApplicationUrl {
 	@JsonManagedReference
 	@ManyToMany(mappedBy = "applicationUrl", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
 	public Set<Application> application;
+	@Column(name = "RETRY_COUNT")
+	private Integer retryCount;
+	@Column(name = "RETRY_COUNT_RATE")
+	private Integer retryCountRate;
 	public long getId() {
 		return id;
 	}
@@ -131,6 +135,18 @@ public class ApplicationUrl {
 	}
 	public void setApplication(Set<Application> application) {
 		this.application = application;
+	}
+	public Integer getRetryCount() {
+		return retryCount;
+	}
+	public void setRetryCount(Integer retryCount) {
+		this.retryCount = retryCount;
+	}
+	public Integer getRetryCountRate() {
+		return retryCountRate;
+	}
+	public void setRetryCountRate(Integer retryCountRate) {
+		this.retryCountRate = retryCountRate;
 	}
 
 	

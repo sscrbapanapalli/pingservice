@@ -34,6 +34,7 @@ import org.springframework.scheduling.config.IntervalTask;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 
 import com.cmacgm.model.Application;
+import com.cmacgm.model.ApplicationUrl;
 import com.cmacgm.model.Users;
 import com.cmacgm.repository.ApplicationRepository;
 import com.cmacgm.repository.ApplicationUrlRepository;
@@ -49,24 +50,25 @@ public class PingServiceJob implements SchedulingConfigurer {
 
 	@Autowired
 	ApplicationUrlRepository applicationUrlRepository;
-	
+
 	static {
-        disableSSLVerification();
-    }
+		disableSSLVerification();
+	}
 
 	@Override
 	public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
 		LOGGER.debug("adding applicationRepository job");
 		List<com.cmacgm.model.Application> application = applicationRepository.findAll();
-	
+
 		if (application != null) {
-			
+
 			for (com.cmacgm.model.Application configApplication : application) {
 				long delay = configApplication.getSyncJobInitialDelay();
 				long rate = configApplication.getSyncJobRate();
-				
+
 				taskRegistrar.addFixedRateTask(new IntervalTask(new Runnable() {
-					Application configAppl=new Application();
+					Application configAppl = new Application();
+
 					public void run() {
 						LOGGER.debug("running applicationRepository job");
 						applicationRepository.updateLastSyncTime(new Date(), configApplication.getId());
@@ -75,72 +77,104 @@ public class PingServiceJob implements SchedulingConfigurer {
 						try {
 							StringBuilder buf = new StringBuilder();
 							boolean trigger = false;
-							buf.append("<html>" + "<body>" + "<table border='1'>" + "<tr>"                                     
-									+ "<th>Application Name</th>" + "<th>Server Type</th>"
-									+ "<th>Status Code</th>" + "<th>Description :</th>"
+							buf.append("<html>" + "<body>" + "<table border='1'>" + "<tr>" + "<th>Application Name</th>"
+									+ "<th>Server Type</th>" + "<th>Status Code</th>" + "<th>Description </th>"
 									+ "<th>Application Url</th>" + "<th>Last Sync Time </th>" + "</tr>");
-							String statusCode = "";                                  
-							for (com.cmacgm.model.ApplicationUrl applicationUrl : configAppl
-									.getApplicationUrl()) {
+
+							for (com.cmacgm.model.ApplicationUrl applicationUrl : configAppl.getApplicationUrl()) {
+								ApplicationUrl configWebApplUrl = new ApplicationUrl();
+
+								String statusCode = "";
 								if (applicationUrl != null
 										&& applicationUrl.getServerType().getName().equalsIgnoreCase("web")
 										|| applicationUrl.getServerType().getName().equalsIgnoreCase("webservices")) {
-								
+
 									HashMap<String, String> hMap = new HashMap<>();
 									hMap = pingUrl(applicationUrl.getApplicationUrl());
+									configWebApplUrl = applicationUrlRepository
+											.findByIdApplicationUrl(applicationUrl.getId());
 									if (hMap != null && !hMap.isEmpty()) {
 										statusCode = hMap.get("responseCode");
+										if (statusCode != "400" && configWebApplUrl.getRetryCount()!=null&&  configWebApplUrl.getRetryCountRate()!=null && configWebApplUrl.getRetryCount() > 0
+												&& configWebApplUrl.getRetryCount() <= configWebApplUrl.getRetryCountRate()-1) {
+											applicationUrlRepository.updateRetryCount(
+													configWebApplUrl.getRetryCount() + 1, configWebApplUrl.getId());
+										}
 									}
 									if (hMap != null && !hMap.isEmpty() && statusCode != null
 											&& !applicationUrl.getStatusCode().equalsIgnoreCase(statusCode)) {
+										if (statusCode != "400"  && configWebApplUrl.getRetryCount()!=null && configWebApplUrl.getRetryCount() == 0)
+											applicationUrlRepository.updateRetryCount(1, applicationUrl.getId());
+										else
+											applicationUrlRepository.updateRetryCount(0, applicationUrl.getId());
 										applicationUrl.setStatusCode(statusCode);
 										applicationUrl.setDescription(hMap.get("description"));
-									
+
 										if (statusCode.equalsIgnoreCase("200")) {
 											applicationUrl.setStatus(true);
 											buf.append("<tr><td>").append(applicationUrl.getAppName())
 													.append("</td><td>")
-													.append(applicationUrl.getServerType().getName())
-													.append("</td><td>").append(applicationUrl.getStatusCode())
-													.append("</td><td>").append(applicationUrl.getDescription())
-													.append("</td><td>").append(applicationUrl.getApplicationUrl())
-													.append("</td><td>").append(getFormatDate(configAppl.getLastSyncTime()))
+													.append(applicationUrl.getServerType().getName());
+
+											if (statusCode.equalsIgnoreCase("200")) {
+												buf.append("</td><td style='color:green'>")
+														.append(applicationUrl.getStatusCode())
+														.append("</td><td style='color:green'>")
+														.append(applicationUrl.getDescription());
+											} else {
+												buf.append("</td><td style='color:red'>")
+														.append(applicationUrl.getStatusCode())
+														.append("</td><td  style='color:red'>")
+														.append(applicationUrl.getDescription());
+											}
+
+											buf.append("</td><td>").append(applicationUrl.getApplicationUrl())
+													.append("</td><td>")
+													.append(getFormatDate(configAppl.getLastSyncTime()))
 													.append("</td></tr>");
-									
+
 										} else {
-											   if(hMap.get("description").equalsIgnoreCase("connect timed out")  ||
-													   hMap.get("description").equalsIgnoreCase("Read timed out"))
+											if (applicationUrl.getStatusCode() == "400")
 												applicationUrl.setStatus(true);
-												else
+											else
 												applicationUrl.setStatus(false);
 											buf.append("<tr><td>").append(applicationUrl.getAppName())
 													.append("</td><td>")
-													.append(applicationUrl.getServerType().getName())
-													.append("</td><td>").append(applicationUrl.getStatusCode())
-													.append("</td><td>").append(applicationUrl.getDescription())
-													.append("</td><td>").append(applicationUrl.getApplicationUrl())
-													.append("</td><td>").append(getFormatDate(configAppl.getLastSyncTime()))
-													.append("</td></tr>");
-											
+													.append(applicationUrl.getServerType().getName());
+											if (statusCode.equalsIgnoreCase("200")) {
+												buf.append("</td><td style='color:green'>")
+														.append(applicationUrl.getStatusCode())
+														.append("</td><td style='color:green'>")
+														.append(applicationUrl.getDescription());
+											} else {
+												buf.append("</td><td style='color:red'>")
+														.append(applicationUrl.getStatusCode())
+														.append("</td><td  style='color:red'>")
+														.append(applicationUrl.getDescription());
 											}
-										
-									
-										applicationUrlRepository.update(applicationUrl.isStatus(),
-												applicationUrl.getStatusCode(), applicationUrl.getDescription(),
-												new Date(), applicationUrl.getId());
-										if(!hMap.get("description").equalsIgnoreCase("connect timed out") ||
-												   !hMap.get("description").equalsIgnoreCase("Read timed out")){
-										trigger = true;
+											buf.append("</td><td>").append(applicationUrl.getApplicationUrl())
+													.append("</td><td>")
+													.append(getFormatDate(configAppl.getLastSyncTime()))
+													.append("</td></tr>");
+
+										}
+
+										if (statusCode != "400" && configWebApplUrl.getRetryCount()!=null &&configWebApplUrl.getRetryCountRate()!=null && configWebApplUrl.getRetryCount() == configWebApplUrl.getRetryCountRate()) {
+											applicationUrlRepository.update(0, applicationUrl.isStatus(),
+													applicationUrl.getStatusCode(), applicationUrl.getDescription(),
+													new Date(), configWebApplUrl.getId());
+											trigger = true;
 										}
 									}
 
 								} else if (applicationUrl != null
 										&& (applicationUrl.getServerType().getName().equalsIgnoreCase("db")
-												|| applicationUrl.getServerType().getName()
-														.equalsIgnoreCase("server"))
+												|| applicationUrl.getServerType().getName().equalsIgnoreCase("server"))
 										&& applicationUrl.getIpAddress() != null
 										&& applicationUrl.getHostPortNo() != null) {
-								
+									ApplicationUrl configDbApplUrl = new ApplicationUrl();
+									configDbApplUrl = applicationUrlRepository
+											.findByIdApplicationUrl(applicationUrl.getId());
 									HashMap<String, String> hMapSocket = new HashMap<>();
 
 									hMapSocket = isSocketAliveUtility(applicationUrl.getIpAddress(),
@@ -148,11 +182,21 @@ public class PingServiceJob implements SchedulingConfigurer {
 
 									if (hMapSocket != null && !hMapSocket.isEmpty()) {
 										statusCode = hMapSocket.get("responseCode");
+										if (statusCode != "400" && configDbApplUrl.getRetryCount()!=null &&  configDbApplUrl.getRetryCountRate()!=null && configDbApplUrl.getRetryCount() > 0
+												&& configDbApplUrl.getRetryCount() <= configDbApplUrl.getRetryCountRate()-1) {
+											applicationUrlRepository.updateRetryCount(
+													configDbApplUrl.getRetryCount() + 1, configDbApplUrl.getId());
+										}
 									}
 
 									if (hMapSocket != null && !hMapSocket.isEmpty() && statusCode != null
 											&& !applicationUrl.getStatusCode().equalsIgnoreCase(statusCode)) {
-									
+
+										if (statusCode != "400" && configDbApplUrl.getRetryCount()!=null && configDbApplUrl.getRetryCount() == 0)
+											applicationUrlRepository.updateRetryCount(1, applicationUrl.getId());
+										else
+											applicationUrlRepository.updateRetryCount(0, applicationUrl.getId());
+
 										applicationUrl.setStatusCode(hMapSocket.get("responseCode"));
 										applicationUrl.setDescription(hMapSocket.get("description"));
 
@@ -160,54 +204,67 @@ public class PingServiceJob implements SchedulingConfigurer {
 											applicationUrl.setStatus(true);
 											buf.append("<tr><td>").append(applicationUrl.getAppName())
 													.append("</td><td>")
-													.append(applicationUrl.getServerType().getName())
-													.append("</td><td>").append(applicationUrl.getStatusCode())
-													.append("</td><td>").append(applicationUrl.getDescription())
-													.append("</td><td>").append(applicationUrl.getApplicationUrl())
-													.append("</td><td>").append(getFormatDate(configAppl.getLastSyncTime()))
+													.append(applicationUrl.getServerType().getName());
+											if (statusCode.equalsIgnoreCase("200")) {
+												buf.append("</td><td style='color:green'>")
+														.append(applicationUrl.getStatusCode())
+														.append("</td><td style='color:green'>")
+														.append(applicationUrl.getDescription());
+											} else {
+												buf.append("</td><td style='color:red'>")
+														.append(applicationUrl.getStatusCode())
+														.append("</td><td  style='color:red'>")
+														.append(applicationUrl.getDescription());
+											}
+											buf.append("</td><td>").append(applicationUrl.getApplicationUrl())
+													.append("</td><td>")
+													.append(getFormatDate(configAppl.getLastSyncTime()))
 													.append("</td></tr>");
-											
+
 										} else {
-											 if(hMapSocket.get("description").equalsIgnoreCase("connect timed out") ||
-													 hMapSocket.get("description").equalsIgnoreCase("Read timed out"))
-											applicationUrl.setStatus(true);
+											if (applicationUrl.getStatusCode() == "400")
+												applicationUrl.setStatus(true);
 											else
-											applicationUrl.setStatus(false);
+												applicationUrl.setStatus(false);
 											buf.append("<tr><td>").append(applicationUrl.getAppName())
 													.append("</td><td>")
-													.append(applicationUrl.getServerType().getName())
-													.append("</td><td>").append(applicationUrl.getStatusCode())
-													.append("</td><td>").append(applicationUrl.getDescription())
-													.append("</td><td>").append(applicationUrl.getApplicationUrl())
-													.append("</td><td>").append(getFormatDate(configAppl.getLastSyncTime()))
+													.append(applicationUrl.getServerType().getName());
+											if (statusCode.equalsIgnoreCase("200")) {
+												buf.append("</td><td style='color:green'>")
+														.append(applicationUrl.getStatusCode())
+														.append("</td><td style='color:green'>")
+														.append(applicationUrl.getDescription());
+											} else {
+												buf.append("</td><td style='color:red'>")
+														.append(applicationUrl.getStatusCode())
+														.append("</td><td  style='color:red'>")
+														.append(applicationUrl.getDescription());
+											}
+											buf.append("</td><td>").append(applicationUrl.getApplicationUrl())
+													.append("</td><td>")
+													.append(getFormatDate(configAppl.getLastSyncTime()))
 													.append("</td></tr>");
-											
-											
+
 										}
-										
-										applicationUrlRepository.update(applicationUrl.isStatus(),
-												applicationUrl.getStatusCode(), applicationUrl.getDescription(),
-												new Date(), applicationUrl.getId());	
-										if(!hMapSocket.get("description").equalsIgnoreCase("connect timed out") ||
-												   !hMapSocket.get("description").equalsIgnoreCase("Read timed out")){
-										trigger = true;
+
+										if (statusCode != "400" && configDbApplUrl.getRetryCount()!=null &&configDbApplUrl.getRetryCountRate()!=null && configDbApplUrl.getRetryCount() == configDbApplUrl.getRetryCountRate()) {
+											applicationUrlRepository.update(0, applicationUrl.isStatus(),
+													applicationUrl.getStatusCode(), applicationUrl.getDescription(),
+													new Date(), configDbApplUrl.getId());
+											trigger = true;
 										}
 									}
 								}
 
 							}
-							if(configAppl
-									.getApplicationUrl()==null || configAppl
-									.getApplicationUrl().size()==0){
+							if (configAppl.getApplicationUrl() == null || configAppl.getApplicationUrl().size() == 0) {
 								buf.append("<tr><td>").append("No Url Configured").append("</td></tr>");
-							}								
+							}
 							buf.append("</table>" + "</body>" + "</html>");
-							
-							if (trigger)
-							{							
+
+							if (trigger) {
 								sendEmail(configAppl, buf.toString());
-							    buf =null;
-							    trigger=false;
+
 							}
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
@@ -219,12 +276,13 @@ public class PingServiceJob implements SchedulingConfigurer {
 		}
 	}
 
-	public String getFormatDate(Date lastSyncTime){	
-		 DateFormat outputformat = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss aa");
-	       String output = null;
-	       output = outputformat.format(lastSyncTime);
+	public String getFormatDate(Date lastSyncTime) {
+		DateFormat outputformat = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss aa");
+		String output = null;
+		output = outputformat.format(lastSyncTime);
 		return output;
 	}
+
 	private static HashMap<String, String> pingUrl(String address) {
 		HashMap<String, String> map = new HashMap<>();
 		int responseCode = 404;
@@ -234,17 +292,17 @@ public class PingServiceJob implements SchedulingConfigurer {
 			URL url = new URL(address);
 
 			URLConnection urlConnection = url.openConnection();
-			
+
 			urlConnection.setConnectTimeout(15000);
 			urlConnection.setReadTimeout(15000);
 			if (address.startsWith("http")) {
 				responseCode = ((HttpURLConnection) urlConnection).getResponseCode();
 				map.put("responseCode", String.valueOf(responseCode));
-			} else {				
+			} else {
 				responseCode = ((HttpsURLConnection) urlConnection).getResponseCode();
 				map.put("responseCode", String.valueOf(responseCode));
 			}
-			if (responseCode==200)
+			if (responseCode == 200)
 				map.put("description", "SUCCESS");
 			else
 				map.put("description", "FAILURE");
@@ -271,7 +329,8 @@ public class PingServiceJob implements SchedulingConfigurer {
 
 	}
 
-	public static HashMap<String, String> isSocketAliveUtility(String hostName, String hostPortNumber) throws IOException {
+	public static HashMap<String, String> isSocketAliveUtility(String hostName, String hostPortNumber)
+			throws IOException {
 		HashMap<String, String> map = new HashMap<>();
 		// Creates a socket address from a hostname and a port number
 		SocketAddress socketAddress = new InetSocketAddress(hostName, Integer.parseInt(hostPortNumber));
@@ -281,7 +340,7 @@ public class PingServiceJob implements SchedulingConfigurer {
 		map.put("description", " ");
 		try {
 			socket.connect(socketAddress, 15000);
-			
+
 			map.put("responseCode", "200");
 			map.put("description", "SUCCESS");
 			return map;
@@ -301,66 +360,63 @@ public class PingServiceJob implements SchedulingConfigurer {
 			map.put("responseCode", "404");
 			map.put("description", e.getMessage());
 			return map;
+		} finally {
+			if (socket != null) {
+				socket.close();
+			}
 		}
-		finally{
-	        if(socket != null){
-	        	socket.close();
-	        }
-	    }
 
 	}
-	
-	 //Method used for bypassing SSL verification
-    public static void disableSSLVerification() {
 
-        TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
-            public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
+	// Method used for bypassing SSL verification
+	public static void disableSSLVerification() {
 
-           
+		TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
+			public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+				return null;
+			}
 
 			@Override
 			public void checkClientTrusted(java.security.cert.X509Certificate[] arg0, String arg1)
 					throws CertificateException {
 				// TODO Auto-generated method stub
-				
+
 			}
 
 			@Override
 			public void checkServerTrusted(java.security.cert.X509Certificate[] arg0, String arg1)
 					throws CertificateException {
 				// TODO Auto-generated method stub
-				
+
 			}
 
-        } };
+		} };
 
-        SSLContext sc = null;
-        try {
-            sc = SSLContext.getInstance("SSL");
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-        } catch (KeyManagementException e) {
-            e.printStackTrace();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+		SSLContext sc = null;
+		try {
+			sc = SSLContext.getInstance("SSL");
+			sc.init(null, trustAllCerts, new java.security.SecureRandom());
+		} catch (KeyManagementException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+		HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
 
-        HostnameVerifier allHostsValid = new HostnameVerifier() {
-            public boolean verify(String hostname, SSLSession session) {
-                return true;
-            }
-        };      
-        HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);           
-    }
+		HostnameVerifier allHostsValid = new HostnameVerifier() {
+			public boolean verify(String hostname, SSLSession session) {
+				return true;
+			}
+		};
+		HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
+	}
 
 	public void sendEmail(com.cmacgm.model.Application application, String htmlContent) {
 		SendMail sendMail = new SendMail();
 
 		if (application.getUsers() != null) {
 			for (Users userData : application.getUsers()) {
-				//System.out.println(userData.getEmail() + " " + htmlContent);
+				// System.out.println(userData.getEmail() + " " + htmlContent);
 				sendMail.SendMail(application.getApplicationName() + " Development Team", userData.getEmail(),
 						htmlContent);
 			}
@@ -368,12 +424,13 @@ public class PingServiceJob implements SchedulingConfigurer {
 		}
 	}
 
-/*	public static void main(String args[]) {
-		HashMap<String, String> map = new HashMap<>();
-		map = pingUrl("http://10.13.68.167/success.html");
-		System.out.println(map.get("responseCode"));
-		System.out.println(map.get("description"));
-
-	}*/
+	/*
+	 * public static void main(String args[]) { HashMap<String, String> map =
+	 * new HashMap<>(); map = pingUrl("http://10.13.68.167/success.html");
+	 * System.out.println(map.get("responseCode"));
+	 * System.out.println(map.get("description"));
+	 * 
+	 * }
+	 */
 
 }
