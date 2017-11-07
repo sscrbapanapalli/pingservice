@@ -50,7 +50,6 @@ public class ApplicationUrl {
 	private Date lastUpdatedTime;
 	@Column(name = "CREATED_BY")
 	private String createdBy;
-	@Column(name = "CREATED_ON")
 	@JsonManagedReference
 	@ManyToMany(mappedBy = "applicationUrl", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
 	public Set<Application> application;
@@ -58,6 +57,14 @@ public class ApplicationUrl {
 	private Integer retryCount;
 	@Column(name = "RETRY_COUNT_RATE")
 	private Integer retryCountRate;
+	@Column(name = "TEMP_STATUS")
+	private String tempStatus;
+	public String getTempStatus() {
+		return tempStatus;
+	}
+	public void setTempStatus(String tempStatus) {
+		this.tempStatus = tempStatus;
+	}
 	public long getId() {
 		return id;
 	}
