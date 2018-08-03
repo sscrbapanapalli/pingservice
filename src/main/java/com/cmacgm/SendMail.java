@@ -4,14 +4,10 @@ import java.security.GeneralSecurityException;
 import java.util.Properties;
 
 import javax.mail.Message;
-import javax.mail.Multipart;
 import javax.mail.Session;
 import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMessage.RecipientType;
-import javax.mail.internet.MimeMultipart;
 import javax.servlet.http.HttpServlet;
 
 import com.sun.mail.util.MailSSLSocketFactory;
@@ -22,7 +18,7 @@ import com.sun.mail.util.MailSSLSocketFactory;
 public class SendMail extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
-	public Boolean SendMail(String subject, String toMail, String text) {
+	public Boolean SendMail(String fromEmailAddress,String subject, String toMail, String text) {
 
 		Boolean mailsuccess = false;
 		try {
@@ -35,7 +31,7 @@ public class SendMail extends HttpServlet {
 			props.load(SendMail.class.getClassLoader().getResourceAsStream("config.properties"));
 			props.put("mail.transport.protocol", props.get("mail.transport.protocol"));
 			props.put("mail.smtp.host", props.get("mail.smtp.host"));
-			String fromAdd = (String) props.get("mail.fromAddress");
+			//String fromAdd = (String) props.get("mail.fromAddress");
 
 			// tls enabled
 			props.put("mail.smtp.starttls.enable", props.get("mail.smtp.starttls.enable"));
@@ -52,8 +48,9 @@ public class SendMail extends HttpServlet {
 			session = Session.getInstance(props, null);
 			
 			MimeMessage message = new MimeMessage(session);
-			message.setFrom(new InternetAddress(fromAdd));
-			message.addRecipient(RecipientType.TO, new InternetAddress(toAdd));
+			message.setFrom(new InternetAddress(fromEmailAddress));
+			InternetAddress[] iAdressArrayTo = InternetAddress.parse(toAdd.trim());
+			message.setRecipients(Message.RecipientType.TO, iAdressArrayTo);			
 			message.setSubject(subject);
 			message.setContent(text, "text/html");			
 			Transport.send(message);

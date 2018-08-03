@@ -56,6 +56,8 @@ public class Application {
 	@JsonManagedReference
 	@ManyToMany(mappedBy = "applications",fetch=FetchType.EAGER,cascade = CascadeType.ALL)
 	public Set<Users> users;
+	@Column(name = "fromEmailAddress")
+	private String fromEmailAddress;
 	
 	public Long getId() {
 		return id;
@@ -128,6 +130,12 @@ public class Application {
 	}
 	public void setUsers(Set<Users> users) {
 		this.users = users;
+	}
+	public String getFromEmailAddress() {
+		return fromEmailAddress;
+	}
+	public void setFromEmailAddress(String fromEmailAddress) {
+		this.fromEmailAddress = fromEmailAddress;
 	}
 
 	

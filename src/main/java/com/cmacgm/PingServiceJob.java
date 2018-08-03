@@ -521,7 +521,7 @@ public class PingServiceJob implements SchedulingConfigurer {
 		if (application.getUsers() != null) {
 			for (Users userData : application.getUsers()) {
 				// System.out.println(userData.getEmail() + " " + htmlContent);
-				sendMail.SendMail(application.getApplicationName() + " Development Team", userData.getEmail(),
+				sendMail.SendMail(application.getFromEmailAddress(),application.getApplicationName() + " Development Team", userData.getEmail(),
 						htmlContent);
 			}
 
